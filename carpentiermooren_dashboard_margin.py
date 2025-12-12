@@ -189,11 +189,10 @@ def load_csv(f):
     df.columns = [c.strip() for c in df.columns]
     return df
 
-def normalize_pct(series: pd.Series) -> pd.Series:
+def normalize_pct(series):
     s = pd.to_numeric(series, errors="coerce")
-    if s.abs().max(skipna=True) > 1.5:
-        s = s / 100.0
-    return s
+    return s  # keep decimals as-is
+
 
 def add_derived(df: pd.DataFrame) -> pd.DataFrame:
     out = df.copy()
@@ -201,7 +200,7 @@ def add_derived(df: pd.DataFrame) -> pd.DataFrame:
     out["_PriceChangePct"]  = normalize_pct(out["PriceChangePercent"])
     out["_MarginPct"]       = normalize_pct(out["MarginPercent"])
     out["Margin_After"]  = pd.to_numeric(out["Margin"], errors="coerce")
-    out["Margin_Before"] = out["Margin_After"] * (1.0 - out["_MarginChangePct"])
+    out["Margin_Before"] = out["Margin_After"] / (1.0 + out["_MarginChangePct"])
     out["Margin_Δ"]      = out["Margin_After"] - out["Margin_Before"]
     out["Is_Increase"]   = out["Margin_Δ"] > 0
     out["MarginChangePercent_pct"] = out["_MarginChangePct"] * 100.0
@@ -304,6 +303,10 @@ if missing:
     st.stop()
 
 df = add_derived(raw)
+df["MarginChangePercent"] = df["MarginChangePercent"]*100
+df["PriceChangePercent"] = df["PriceChangePercent"]*100
+df["MarginPercent"] = df["MarginPercent"]*100
+
 filtered = build_filters_ui(df)
 
 # ---------------------------
